@@ -3,269 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App</title>
+    <title>Chat</title>
     <style>
-        /* --- General Styles & Resets --- */
         :root {
-            --background-color: #f0f2f5;
-            --body-text-color: #0d0d0d;
-            --container-bg: #ffffff;
-            --bubble-sent-bg: #007aff;
-            --bubble-sent-text: #ffffff;
-            --bubble-received-bg: #e5e5ea;
-            --bubble-received-text: #0d0d0d;
-            --input-bg: #f0f2f5;
-            --border-color: #d1d1d6;
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --header-bg: #f8f8f8;
+            --border-color: #e0e0e0;
+            --input-bg: #f2f2f7;
+            --sent-bubble-bg: #007aff;
+            --sent-bubble-text: #ffffff;
+            --received-bubble-bg: #e5e5ea;
+            --received-bubble-text: #000000;
             --placeholder-text: #8e8e93;
-            --error-color: #ff3b30;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html, body {
-            height: 100%;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
 
         body {
             font-family: var(--font-family);
-            background-color: var(--background-color);
-            color: var(--body-text-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
         }
         
-        /* --- Main App Container --- */
         .chat-container {
             width: 100%;
             height: 100%;
-            background-color: var(--container-bg);
+            background-color: var(--bg-color);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-        
         @media (min-width: 600px) {
              .chat-container {
-                max-width: 800px;
-                max-height: 95vh;
+                max-width: 420px;
+                max-height: 90vh;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                border-radius: 20px;
+                border-radius: 24px;
+                border: 1px solid var(--border-color);
              }
         }
 
-        /* --- Username Selection Screen --- */
-        #username-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            padding: 2rem;
-            text-align: center;
-        }
+        .screen { display: none; flex-direction: column; height: 100%; }
+        .screen.active { display: flex; }
 
-        #username-screen h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        #username-screen p {
-            color: var(--placeholder-text);
-            margin-bottom: 1.5rem;
-        }
-
-        #username-form {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            max-width: 300px;
-        }
+        #username-screen { justify-content: center; align-items: center; padding: 2rem; text-align: center; }
+        #username-screen h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: 0.5rem; }
+        #username-screen p { color: var(--placeholder-text); margin-bottom: 1.5rem; }
+        #username-form { display: flex; flex-direction: column; width: 100%; max-width: 300px; }
+        .form-input { padding: 12px 16px; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-color); margin-bottom: 1rem; text-align: center; }
+        .form-button { padding: 12px 16px; font-size: 1rem; font-weight: 600; border: none; border-radius: 8px; background-color: var(--sent-bubble-bg); color: white; cursor: pointer; }
+        #error-message { color: #ff3b30; margin-top: 1rem; height: 1em; font-weight: 500; }
         
-        .form-input {
-            padding: 12px 16px;
-            font-size: 1rem;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            background-color: var(--input-bg);
-            margin-bottom: 1rem;
-            text-align: center;
-            -webkit-appearance: none; /* Removes iOS default styles */
-        }
+        .chat-header { padding: 0.75rem 1rem; font-weight: 600; text-align: center; border-bottom: 1px solid var(--border-color); background-color: var(--header-bg); z-index: 10; }
+        .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column-reverse; }
         
-        .form-input:focus {
-            outline: none;
-            border-color: var(--bubble-sent-bg);
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
-        }
+        .message-wrapper { display: flex; flex-direction: column; margin-bottom: 1rem; animation: slideInUp 0.3s ease-out; flex-shrink: 0; }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .form-button {
-            padding: 12px 16px;
-            font-size: 1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 10px;
-            background-color: var(--bubble-sent-bg);
-            color: var(--bubble-sent-text);
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .form-button:hover {
-            background-color: #0056b3;
-        }
+        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: 18px; line-height: 1.4; word-wrap: break-word; }
+        .username { font-size: 0.75rem; font-weight: 600; margin-left: 5px; margin-bottom: 4px; color: var(--placeholder-text); }
         
-        #error-message {
-            color: var(--error-color);
-            margin-top: 1rem;
-            height: 1em;
-            font-weight: 500;
-        }
-
-        /* --- Chat Screen --- */
-        #chat-screen {
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            height: 100%;
-        }
+        .sent { align-self: flex-end; align-items: flex-end; }
+        .sent .message-bubble { background-color: var(--sent-bubble-bg); color: var(--sent-bubble-text); }
         
-        .chat-header {
-            padding: 1rem;
-            font-weight: 600;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--container-bg);
-            z-index: 10;
-        }
+        .received { align-self: flex-start; align-items: flex-start; }
+        .received .message-bubble { background-color: var(--received-bubble-bg); color: var(--received-bubble-text); }
 
-        .chat-messages {
-            flex: 1;
-            padding: 1rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .message-bubble {
-            max-width: 75%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            margin-bottom: 10px;
-            position: relative;
-        }
-        
-        .message-bubble .username {
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-            opacity: 0.8;
-        }
-        
-        .message-bubble .text {
-             font-size: 1rem;
-             line-height: 1.4;
-             word-wrap: break-word;
-        }
+        .timestamp { display: none; /* Hidden for iMessage look, can be re-enabled */ }
 
-        .sent {
-            background-color: var(--bubble-sent-bg);
-            color: var(--bubble-sent-text);
-            align-self: flex-end;
-            border-bottom-right-radius: 5px;
-        }
+        .message-bubble img { max-width: 100%; border-radius: 16px; margin-top: 5px; cursor: pointer; }
+        .message-bubble audio { width: 100%; margin-top: 5px; }
 
-        .received {
-            background-color: var(--bubble-received-bg);
-            color: var(--bubble-received-text);
-            align-self: flex-start;
-            border-bottom-left-radius: 5px;
-        }
+        .chat-form-container { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border-color); background-color: var(--header-bg); }
+        #chat-form { display: flex; align-items: center; gap: 0.5rem; }
+        .input-wrapper { flex: 1; display: flex; background-color: var(--input-bg); border-radius: 20px; padding: 0 4px 0 12px; }
+        #message-input { flex: 1; padding: 10px 0; border: none; background: none; color: var(--text-color); font-size: 1rem; resize: none; }
+        #message-input::placeholder { color: var(--placeholder-text); }
         
-         .received .username {
-            color: var(--bubble-sent-bg);
-         }
+        .icon-button { background: none; border: none; cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; color: var(--placeholder-text); }
+        .icon-button svg { width: 24px; height: 24px; }
+        #send-button { color: var(--sent-bubble-bg); padding-right: 12px; }
+        #send-button svg { width: 28px; height: 28px; }
 
-        .chat-form-container {
-            padding: 1rem;
-            border-top: 1px solid var(--border-color);
-            background-color: #f9f9f9;
-        }
-
-        #chat-form {
-            display: flex;
-            align-items: center;
-        }
-
-        #message-input {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 18px;
-            background-color: var(--input-bg);
-            font-size: 1rem;
-             -webkit-appearance: none;
-        }
-        
-        #message-input:focus {
-            outline: none;
-        }
-
-        #send-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 10px;
-            margin-left: 10px;
-        }
-        
-        #send-button svg {
-            width: 28px;
-            height: 28px;
-            fill: var(--bubble-sent-bg);
-            transition: transform 0.1s ease;
-        }
-        
-        #send-button:active svg {
-             transform: scale(0.9);
-        }
+        .typing-indicator { height: 20px; padding: 0 1rem 0.5rem; color: var(--placeholder-text); font-size: 0.8rem; }
+        .typing-indicator-bubble { display: inline-block; background: var(--received-bubble-bg); border-radius: 18px; padding: 8px 12px; animation: slideInUp 0.3s ease-out; }
+        .typing-indicator-bubble span { display: inline-block; width: 6px; height: 6px; background-color: var(--placeholder-text); border-radius: 50%; margin: 0 1px; animation: bounce 1.2s infinite ease-in-out; }
+        .typing-indicator-bubble span:nth-child(2) { animation-delay: -1.0s; }
+        .typing-indicator-bubble span:nth-child(3) { animation-delay: -0.8s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
 
     </style>
 </head>
 <body>
 
     <div class="chat-container">
-        <!-- Screen 1: Username Selection -->
-        <div id="username-screen">
-            <h1>Welcome to Chat</h1>
-            <p>Choose a username to begin.</p>
+        <div id="username-screen" class="screen active">
+            <h1>Chat</h1>
+            <p>Choose a unique username.</p>
             <form id="username-form">
-                <input type="text" id="username-input" class="form-input" placeholder="Enter your username" autocomplete="off" required>
-                <button type="submit" class="form-button">Join Chat</button>
+                <input type="text" id="username-input" class="form-input" placeholder="Username" autocomplete="off" required>
+                <button type="submit" class="form-button">Continue</button>
             </form>
             <p id="error-message"></p>
         </div>
 
-        <!-- Screen 2: Chat Interface -->
-        <div id="chat-screen">
-            <header class="chat-header">
-                Public Chat
-            </header>
-            <div class="chat-messages" id="message-container">
-                <!-- Messages will appear here -->
-            </div>
+        <div id="chat-screen" class="screen">
+            <header class="chat-header">Public Chat</header>
+            <div class="chat-messages" id="message-container"></div>
+            <div class="typing-indicator" id="typing-indicator"></div>
             <div class="chat-form-container">
                 <form id="chat-form">
-                    <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
-                    <button id="send-button" type="submit">
-                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+                    <button type="button" class="icon-button" id="image-upload-btn" title="Send Image">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.41,6.34,20,4.93a1,1,0,0,0-1.41,0L5.64,17.88,2,22l4.12-3.64L19.07,5.41A1.73,1.73,0,0,0,21.41,6.34ZM19,8.41,15.59,5l-1,1L18,9.41ZM4.1,20l1.5-1.5L8,20.94,5.6,20Z"/></svg>
                     </button>
+                    <div class="input-wrapper">
+                        <input id="message-input" placeholder="Message" autocomplete="off"></input>
+                        <button id="send-button" type="submit" title="Send">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm5,10.5a.5.5,0,0,1-.5.5h-3v3a.5.5,0,0,1-.5.5h-2a.5.5,0,0,1-.5-.5v-3h-3a.5.5,0,0,1-.5-.5v-2a.5.5,0,0,1,.5-.5h3v-3a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5,.5v3h3a.5.5,0,0,1,.5,.5Z"/></svg>
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -273,122 +137,225 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const usernameScreen = document.getElementById('username-screen');
-            const chatScreen = document.getElementById('chat-screen');
+            const RENDER_URL = 'https://my-cool-chat-app.onrender.com'; // IMPORTANT: Replace
+            
+            const screens = { username: document.getElementById('username-screen'), chat: document.getElementById('chat-screen') };
             const usernameForm = document.getElementById('username-form');
             const usernameInput = document.getElementById('username-input');
             const errorMessage = document.getElementById('error-message');
             const chatForm = document.getElementById('chat-form');
             const messageInput = document.getElementById('message-input');
             const messageContainer = document.getElementById('message-container');
+            const imageUploadInput = document.getElementById('image-upload-input');
+            const imageUploadBtn = document.getElementById('image-upload-btn');
+            const typingIndicator = document.getElementById('typing-indicator');
 
             let currentUser = localStorage.getItem('chat_username');
             let ws;
+            let typingTimeout;
 
+            // --- UI & State Management ---
             const showError = (message) => {
                 errorMessage.textContent = message;
                 setTimeout(() => errorMessage.textContent = '', 3000);
             };
 
+            const setActiveScreen = (screenName) => {
+                Object.values(screens).forEach(s => s.classList.remove('active'));
+                screens[screenName].classList.add('active');
+            };
+
             const transitionToChat = () => {
-                usernameScreen.style.display = 'none';
-                chatScreen.style.display = 'flex';
+                setActiveScreen('chat');
                 loadMessageHistory();
                 connectWebSocket();
             };
             
-            const scrollToBottom = () => {
-                messageContainer.scrollTop = messageContainer.scrollHeight;
+            // --- Message Display & Sanitization ---
+            const sanitizeHTML = (str) => {
+                const temp = document.createElement('div');
+                temp.textContent = str;
+                return temp.innerHTML;
             };
 
-            const displayMessage = (message, prepend = false) => {
+            const scrollToBottom = () => {
+                messageContainer.scrollTo({ top: messageContainer.scrollHeight, behavior: 'smooth' });
+            };
+
+            const createMessageElement = (msg) => {
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('message-wrapper', msg.username === currentUser ? 'sent' : 'received');
+
                 const bubble = document.createElement('div');
                 bubble.classList.add('message-bubble');
-
-                const isSent = message.username === currentUser;
-                bubble.classList.add(isSent ? 'sent' : 'received');
                 
-                let usernameDisplay = isSent ? '' : `<div class="username">${message.username}</div>`;
-
-                bubble.innerHTML = `${usernameDisplay}<div class="text">${message.text}</div>`;
+                let contentHTML = '';
+                switch(msg.type) {
+                    case 'text':
+                        contentHTML = `<div class="text">${sanitizeHTML(msg.content)}</div>`;
+                        break;
+                    case 'image':
+                        contentHTML = `<img src="${RENDER_URL}${msg.content}" alt="Image">`;
+                        break;
+                    case 'audio':
+                        contentHTML = `<audio controls src="${RENDER_URL}${msg.content}"></audio>`;
+                        break;
+                }
                 
-                if (prepend) {
-                    messageContainer.insertBefore(bubble, messageContainer.firstChild);
-                } else {
-                    messageContainer.appendChild(bubble);
+                if (msg.username !== currentUser) {
+                     const usernameEl = document.createElement('div');
+                     usernameEl.className = 'username';
+                     usernameEl.textContent = sanitizeHTML(msg.username);
+                     wrapper.appendChild(usernameEl);
                 }
-
-                if (!prepend) {
-                    scrollToBottom();
-                }
+                bubble.innerHTML = contentHTML;
+                
+                wrapper.appendChild(bubble);
+                return wrapper;
             };
 
-            const loadMessageHistory = async () => {
-                try {
-                    const res = await fetch('/messages');
-                    const messages = await res.json();
-                    messageContainer.innerHTML = '';
-                    messages.forEach(msg => displayMessage(msg));
+            const displayMessage = (message, isNew = false) => {
+                const el = createMessageElement(message);
+                messageContainer.insertBefore(el, messageContainer.firstChild);
+                if (isNew) {
                     scrollToBottom();
-                } catch (error) {
-                    console.error('Failed to load message history:', error);
                 }
             };
             
-            const connectWebSocket = () => {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                ws = new WebSocket(`${protocol}//${window.location.host}`);
+            // --- Typing Indicator ---
+            const currentlyTyping = new Set();
+            const updateTypingIndicator = () => {
+                if (currentlyTyping.size === 0) {
+                    typingIndicator.innerHTML = '';
+                    return;
+                }
+                const names = Array.from(currentlyTyping);
+                let text = `${names.slice(0, 2).join(', ')} is typing...`;
+                if (names.length > 2) text = 'Several people are typing...';
+                
+                typingIndicator.innerHTML = `
+                    <div class="typing-indicator-bubble">
+                        <span></span><span></span><span></span>
+                    </div>
+                `;
+            };
 
-                ws.onopen = () => console.log('Connected to server');
-                ws.onclose = () => setTimeout(connectWebSocket, 3000); // Auto-reconnect
-                ws.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    ws.close();
+            // --- API & WebSocket Communication ---
+            const loadMessageHistory = async () => {
+                try {
+                    const res = await fetch(`${RENDER_URL}/messages`);
+                    const messages = await res.json();
+                    messageContainer.innerHTML = '';
+                    // Display messages in reverse order so newest are at the bottom
+                    messages.reverse().forEach(msg => displayMessage(msg));
+                    scrollToBottom();
+                } catch (error) { console.error('Failed to load history:', error); }
+            };
+            
+            const connectWebSocket = () => {
+                const wsUrl = RENDER_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('Connected to server');
+                    if (currentUser) {
+                        ws.send(JSON.stringify({ type: 'registerUser', username: currentUser }));
+                    }
                 };
+
+                ws.onclose = () => setTimeout(connectWebSocket, 3000);
+                ws.onerror = (error) => { console.error('WebSocket error:', error); ws.close(); };
+                
                 ws.onmessage = (event) => {
-                    const message = JSON.parse(event.data);
-                    if (message.type === 'newChatMessage') {
-                        displayMessage(message);
+                    const data = JSON.parse(event.data);
+                    
+                    // --- Diagnostic Console Log ---
+                    console.log('Received WebSocket message:', data);
+
+                    if (data.type === 'newChatMessage') {
+                        displayMessage(data, true);
+                    } else if (data.type === 'userTyping') {
+                        currentlyTyping.add(data.username);
+                        updateTypingIndicator();
+                    } else if (data.type === 'userStopTyping') {
+                        currentlyTyping.delete(data.username);
+                        updateTypingIndicator();
                     }
                 };
             };
 
+            // --- Event Listeners ---
             usernameForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const username = usernameInput.value.trim();
                 if (!username) return;
-
                 try {
-                    const res = await fetch('/register', {
+                    const res = await fetch(`${RENDER_URL}/register`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username }),
                     });
-                    
+                    const data = await res.json();
                     if (res.ok) {
                         currentUser = username;
                         localStorage.setItem('chat_username', username);
                         transitionToChat();
                     } else {
-                       const data = await res.json();
                        showError(data.message);
                     }
-                } catch (error) {
-                    showError('Could not connect to the server.');
-                }
+                } catch (error) { showError('Could not connect.'); }
             });
 
-            chatForm.addEventListener('submit', (e) => {
-                e.preventDefault();
+            const sendTextMessage = () => {
                 const text = messageInput.value.trim();
                 if (text && ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ type: 'chatMessage', username: currentUser, text }));
                     messageInput.value = '';
+                    // Stop typing indicator after sending
+                    clearTimeout(typingTimeout);
+                    ws.send(JSON.stringify({ type: 'stopTyping' }));
                 }
+            };
+
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                sendTextMessage();
+            });
+            
+            messageInput.addEventListener('input', () => {
+                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                
+                clearTimeout(typingTimeout);
+                ws.send(JSON.stringify({ type: 'typing' }));
+                
+                typingTimeout = setTimeout(() => {
+                    ws.send(JSON.stringify({ type: 'stopTyping' }));
+                }, 2000); // 2 seconds
             });
 
+            imageUploadBtn.addEventListener('click', () => imageUploadInput.click());
+            imageUploadInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('media', file);
+                
+                try {
+                    const res = await fetch(`${RENDER_URL}/upload`, { method: 'POST', body: formData });
+                    const result = await res.json();
+                    if (result.success) {
+                        ws.send(JSON.stringify({ type: 'imageMessage', username: currentUser, filePath: result.filePath }));
+                    }
+                } catch (error) { console.error('Upload failed:', error); }
+                imageUploadInput.value = '';
+            });
+
+            // --- Initial Load ---
             if (currentUser) {
                 transitionToChat();
+            } else {
+                setActiveScreen('username');
             }
         });
     </script>
