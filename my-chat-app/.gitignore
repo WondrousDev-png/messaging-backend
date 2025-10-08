@@ -1,0 +1,9 @@
+This file tells Git which files to ignore and not upload to GitHub.
+Ignore the folder that contains installed packages.
+We don't need it because Render will install them automatically.
+node_modules/
+
+Ignore the data folder.
+We don't want to upload our chat history or user lists to GitHub.
+The server will create this folder automatically if it's missing.
+data/
