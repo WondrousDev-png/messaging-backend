@@ -7,12 +7,13 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
+const cors = require('cors'); // <-- ADD THIS LINE
 
 const app = express();
 app.use(express.json());
+app.use(cors()); // <-- AND ADD THIS LINE. This enables CORS for all requests.
 
-// This line tells Express to serve any file from the 'public' folder.
-// This is how you can change your HTML, CSS, or add images without touching the backend code.
+// You can still keep this line if you want to be able to visit your Render URL directly
 app.use(express.static('public'));
 
 
