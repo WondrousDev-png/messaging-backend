@@ -1,7 +1,7 @@
 {
-  "name": "github-chat-service",
-  "version": "1.0.0",
-  "description": "A simple messaging service using JSON files for storage, ready for GitHub.",
+  "name": "github-chat-service-v2",
+  "version": "2.0.0",
+  "description": "An advanced messaging service with auth, file uploads, and more.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,10 +9,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "ws": "^8.13.0",
+    "express": "^4.19.2",
+    "ws": "^8.17.0",
     "uuid": "^9.0.1",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "bcrypt": "^5.1.1",
+    "multer": "^1.4.5-lts.1"
   }
 }
 
