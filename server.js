@@ -1,5 +1,5 @@
 // Advanced messaging service backend using Node.js, Express, and WebSockets.
-// Handles real-time messages, file uploads, and typing indicators.
+// Handles real-time messages, file uploads, and unique username registration.
 
 const express = require('express');
 const http = require('http');
@@ -70,38 +70,36 @@ app.post('/upload', upload.single('media'), (req, res) => {
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// Helper to broadcast messages to all clients
-wss.broadcast = (data, sender) => {
-    wss.clients.forEach(client => {
-        if (client !== sender && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
-};
-
 wss.on('connection', ws => {
-    console.log('User connected.');
+    console.log('A new user connected.');
 
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
-            
-            // Assign username to this connection for tracking typing status
-            if(data.type === 'registerUser') {
-                 ws.username = data.username;
+
+            // Handle registration separately for logging, but don't stop processing.
+            if (data.type === 'registerUser') {
+                ws.username = data.username; // Good for knowing who is connected
+                console.log(`Connection associated with user: ${ws.username}`);
+                return; // Stop processing for this message type
             }
 
-            // Handle typing indicators
-            if (data.type === 'typingStart') {
-                wss.broadcast({ type: 'userTyping', username: ws.username, isTyping: true }, ws);
-            } else if (data.type === 'typingStop') {
-                wss.broadcast({ type: 'userTyping', username: ws.username, isTyping: false }, ws);
-            }
-
-            // Handle new chat messages
+            // For all chat messages, create a new message object for storage and broadcast.
             let newMessage;
-            const commonData = { id: uuidv4(), username: ws.username, timestamp: new Date().toISOString() };
             
+            // THE CRITICAL FIX: Use the username sent *with the message* for reliability.
+            const commonData = { 
+                id: uuidv4(), 
+                username: data.username, 
+                timestamp: new Date().toISOString() 
+            };
+            
+            // Validate that a message has a username.
+            if (!commonData.username) {
+                console.error("Received message without a username. Discarding.");
+                return;
+            }
+
             switch (data.type) {
                 case 'chatMessage':
                     newMessage = { ...commonData, type: 'text', content: data.text };
@@ -119,23 +117,17 @@ wss.on('connection', ws => {
                 messages.push(newMessage);
                 await writeJsonFile(MESSAGES_FILE, messages);
                 
-                // Send to ALL clients including the sender
+                // Broadcast the new message to ALL connected clients.
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(JSON.stringify({ type: 'newChatMessage', ...newMessage }));
                     }
                 });
             }
-        } catch (error) { console.error('Failed to process message:', error); }
+        } catch (error) { console.error('Failed to process WebSocket message:', error); }
     });
 
-    ws.on('close', () => {
-        console.log('User disconnected.');
-        if (ws.username) {
-            // Tell everyone the user stopped typing when they disconnect
-            wss.broadcast({ type: 'userTyping', username: ws.username, isTyping: false });
-        }
-    });
+    ws.on('close', () => console.log('A user disconnected.'));
     ws.on('error', error => console.error('WebSocket Error:', error));
 });
 
@@ -143,6 +135,6 @@ wss.on('connection', ws => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
     await initializeData();
-    console.log(`Server is sparkling on port ${PORT}`);
+    console.log(`Server is sparkling and ready on port ${PORT}`);
 });
 
