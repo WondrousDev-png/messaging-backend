@@ -77,24 +77,42 @@ wss.on('connection', ws => {
         try {
             const data = JSON.parse(message);
 
-            // Handle registration separately for logging, but don't stop processing.
+            // Associate username with the connection for other events
             if (data.type === 'registerUser') {
-                ws.username = data.username; // Good for knowing who is connected
-                console.log(`Connection associated with user: ${ws.username}`);
-                return; // Stop processing for this message type
+                ws.username = data.username;
+                console.log(`Connection now associated with user: ${ws.username}`);
+                return; 
+            }
+            
+            // --- SIMPLIFIED AND CORRECTED BROADCAST LOGIC ---
+            const broadcast = (messageData, excludeSender = false) => {
+                const dataToSend = JSON.stringify(messageData);
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        if (excludeSender && client === ws) return;
+                        client.send(dataToSend);
+                    }
+                });
+            };
+
+            // Handle typing indicators
+            if (data.type === 'typing') {
+                broadcast({ type: 'userTyping', username: ws.username }, true); // Exclude sender
+                return;
+            }
+            if (data.type === 'stopTyping') {
+                broadcast({ type: 'userStopTyping', username: ws.username }, true); // Exclude sender
+                return;
             }
 
-            // For all chat messages, create a new message object for storage and broadcast.
+            // Process and store new chat messages
             let newMessage;
-            
-            // THE CRITICAL FIX: Use the username sent *with the message* for reliability.
             const commonData = { 
                 id: uuidv4(), 
                 username: data.username, 
                 timestamp: new Date().toISOString() 
             };
             
-            // Validate that a message has a username.
             if (!commonData.username) {
                 console.error("Received message without a username. Discarding.");
                 return;
@@ -118,16 +136,21 @@ wss.on('connection', ws => {
                 await writeJsonFile(MESSAGES_FILE, messages);
                 
                 // Broadcast the new message to ALL connected clients.
-                wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify({ type: 'newChatMessage', ...newMessage }));
-                    }
-                });
+                broadcast({ type: 'newChatMessage', ...newMessage });
             }
         } catch (error) { console.error('Failed to process WebSocket message:', error); }
     });
 
-    ws.on('close', () => console.log('A user disconnected.'));
+    ws.on('close', () => {
+        console.log(`User ${ws.username || ''} disconnected.`);
+        if (ws.username) {
+            wss.clients.forEach(client => {
+                 if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: 'userStopTyping', username: ws.username }));
+                 }
+            });
+        }
+    });
     ws.on('error', error => console.error('WebSocket Error:', error));
 });
 
