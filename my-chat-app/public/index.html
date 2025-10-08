@@ -2,16 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Chat</title>
     <style>
         :root {
-            --bg-color: #ffffff;
             --text-color: #000000;
-            --header-bg: #f8f8f8;
+            --header-bg: rgba(247, 247, 247, 0.8);
             --border-color: #e0e0e0;
-            --input-bg: #f2f2f7;
-            --sent-bubble-bg: #007aff;
+            --input-bg: #ffffff;
+            --sent-bubble-gradient: linear-gradient(135deg, #007aff, #00c6ff);
             --sent-bubble-text: #ffffff;
             --received-bubble-bg: #e5e5ea;
             --received-bubble-text: #000000;
@@ -19,78 +18,111 @@
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; }
-
+        /* Note: For a true background image like the example, you would host an image and set it here.
+           We'll use a gradient as a placeholder. */
         body {
+            background: linear-gradient(120deg, #f3ec78, #af4261);
             font-family: var(--font-family);
-            background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            height: 100vh;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         .chat-container {
             width: 100%;
             height: 100%;
-            background-color: var(--bg-color);
+            background-color: rgba(255, 255, 255, 0.6); /* Semi-transparent white background for the chat */
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
+
         @media (min-width: 600px) {
              .chat-container {
                 max-width: 420px;
                 max-height: 90vh;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
                 border-radius: 24px;
-                border: 1px solid var(--border-color);
+                border: 1px solid rgba(255, 255, 255, 0.18);
              }
         }
 
         .screen { display: none; flex-direction: column; height: 100%; }
         .screen.active { display: flex; }
 
-        #username-screen { justify-content: center; align-items: center; padding: 2rem; text-align: center; }
-        #username-screen h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: 0.5rem; }
+        /* --- Username Screen --- */
+        #username-screen { 
+            justify-content: center; 
+            align-items: center; 
+            padding: 2rem; 
+            text-align: center; 
+            background-color: #fff;
+        }
+        #username-screen h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
         #username-screen p { color: var(--placeholder-text); margin-bottom: 1.5rem; }
         #username-form { display: flex; flex-direction: column; width: 100%; max-width: 300px; }
-        .form-input { padding: 12px 16px; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--text-color); margin-bottom: 1rem; text-align: center; }
-        .form-button { padding: 12px 16px; font-size: 1rem; font-weight: 600; border: none; border-radius: 8px; background-color: var(--sent-bubble-bg); color: white; cursor: pointer; }
+        .form-input { padding: 12px 16px; font-size: 1rem; border-radius: 12px; border: 1px solid #ddd; background-color: #f9f9f9; margin-bottom: 1rem; text-align: center; }
+        .form-button { padding: 12px 16px; font-size: 1rem; font-weight: 600; border: none; border-radius: 12px; background-image: var(--sent-bubble-gradient); color: white; cursor: pointer; }
         #error-message { color: #ff3b30; margin-top: 1rem; height: 1em; font-weight: 500; }
         
-        .chat-header { padding: 0.75rem 1rem; font-weight: 600; text-align: center; border-bottom: 1px solid var(--border-color); background-color: var(--header-bg); z-index: 10; }
+        /* --- Chat Screen --- */
+        .chat-header { 
+            padding: 1rem 1.5rem; 
+            text-align: center; 
+            background-color: var(--header-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            z-index: 10; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .profile-pic { width: 40px; height: 40px; border-radius: 50%; background-color: #ccc; font-weight: 700; display: flex; align-items: center; justify-content: center; color: white; }
+        .header-title { font-weight: 600; font-size: 1.1rem; }
+
         .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column-reverse; }
         
         .message-wrapper { display: flex; flex-direction: column; margin-bottom: 1rem; animation: slideInUp 0.3s ease-out; flex-shrink: 0; }
         @keyframes slideInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: 18px; line-height: 1.4; word-wrap: break-word; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 20px; line-height: 1.4; word-wrap: break-word; }
         .username { font-size: 0.75rem; font-weight: 600; margin-left: 5px; margin-bottom: 4px; color: var(--placeholder-text); }
         
         .sent { align-self: flex-end; align-items: flex-end; }
-        .sent .message-bubble { background-color: var(--sent-bubble-bg); color: var(--sent-bubble-text); }
+        .sent .message-bubble { background-image: var(--sent-bubble-gradient); color: var(--sent-bubble-text); }
         
         .received { align-self: flex-start; align-items: flex-start; }
         .received .message-bubble { background-color: var(--received-bubble-bg); color: var(--received-bubble-text); }
 
-        .timestamp { display: none; /* Hidden for iMessage look, can be re-enabled */ }
-
-        .message-bubble img { max-width: 100%; border-radius: 16px; margin-top: 5px; cursor: pointer; }
+        .message-bubble img { max-width: 100%; border-radius: 18px; margin-top: 5px; cursor: pointer; display: block; }
         .message-bubble audio { width: 100%; margin-top: 5px; }
 
-        .chat-form-container { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border-color); background-color: var(--header-bg); }
-        #chat-form { display: flex; align-items: center; gap: 0.5rem; }
-        .input-wrapper { flex: 1; display: flex; background-color: var(--input-bg); border-radius: 20px; padding: 0 4px 0 12px; }
-        #message-input { flex: 1; padding: 10px 0; border: none; background: none; color: var(--text-color); font-size: 1rem; resize: none; }
+        .chat-form-container { 
+            padding: 0.75rem 1rem; 
+            background-color: var(--header-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        #chat-form { display: flex; align-items: center; gap: 0.75rem; }
+        #message-input { 
+            flex: 1; padding: 10px 15px; border: none; 
+            background-color: var(--input-bg);
+            border: 1px solid #ddd;
+            color: var(--text-color); font-size: 1rem; resize: none; border-radius: 20px;
+        }
         #message-input::placeholder { color: var(--placeholder-text); }
         
         .icon-button { background: none; border: none; cursor: pointer; padding: 8px; display: flex; align-items: center; justify-content: center; color: var(--placeholder-text); }
-        .icon-button svg { width: 24px; height: 24px; }
-        #send-button { color: var(--sent-bubble-bg); padding-right: 12px; }
-        #send-button svg { width: 28px; height: 28px; }
+        .icon-button svg { width: 28px; height: 28px; }
+        #send-button { color: #007aff; }
 
         .typing-indicator { height: 20px; padding: 0 1rem 0.5rem; color: var(--placeholder-text); font-size: 0.8rem; }
         .typing-indicator-bubble { display: inline-block; background: var(--received-bubble-bg); border-radius: 18px; padding: 8px 12px; animation: slideInUp 0.3s ease-out; }
@@ -105,31 +137,32 @@
 
     <div class="chat-container">
         <div id="username-screen" class="screen active">
-            <h1>Chat</h1>
-            <p>Choose a unique username.</p>
+            <h1>Welcome to Chat</h1>
+            <p>Choose a display name to get started.</p>
             <form id="username-form">
-                <input type="text" id="username-input" class="form-input" placeholder="Username" autocomplete="off" required>
-                <button type="submit" class="form-button">Continue</button>
+                <input type="text" id="username-input" class="form-input" placeholder="Your Name" autocomplete="off" required>
+                <button type="submit" class="form-button">Join Chat</button>
             </form>
             <p id="error-message"></p>
         </div>
 
         <div id="chat-screen" class="screen">
-            <header class="chat-header">Public Chat</header>
+            <header class="chat-header">
+                 <div class="profile-pic" id="header-profile-pic">P</div>
+                 <div class="header-title" id="header-title">Public Chat</div>
+            </header>
             <div class="chat-messages" id="message-container"></div>
             <div class="typing-indicator" id="typing-indicator"></div>
             <div class="chat-form-container">
                 <form id="chat-form">
                     <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
                     <button type="button" class="icon-button" id="image-upload-btn" title="Send Image">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.41,6.34,20,4.93a1,1,0,0,0-1.41,0L5.64,17.88,2,22l4.12-3.64L19.07,5.41A1.73,1.73,0,0,0,21.41,6.34ZM19,8.41,15.59,5l-1,1L18,9.41ZM4.1,20l1.5-1.5L8,20.94,5.6,20Z"/></svg>
+                        <svg fill="#007aff" viewBox="0 0 24 24"><path d="M12 2c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 11h-3v3c0 .55-.45 1-1 1s-1-.45-1-1v-3H8c-.55 0-1-.45-1-1s.45-1 1-1h3V8c0-.55.45-1 1-1s1 .45 1 1v3h3c.55 0 1 .45 1 1s-.45 1-1 1z"/></svg>
                     </button>
-                    <div class="input-wrapper">
-                        <input id="message-input" placeholder="Message" autocomplete="off"></input>
-                        <button id="send-button" type="submit" title="Send">
-                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,2A10,10,0,1,0,22,12,10,10,0,0,0,12,2Zm5,10.5a.5.5,0,0,1-.5.5h-3v3a.5.5,0,0,1-.5.5h-2a.5.5,0,0,1-.5-.5v-3h-3a.5.5,0,0,1-.5-.5v-2a.5.5,0,0,1,.5-.5h3v-3a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5,.5v3h3a.5.5,0,0,1,.5,.5Z"/></svg>
-                        </button>
-                    </div>
+                    <input id="message-input" placeholder="iMessage" autocomplete="off"></input>
+                    <button id="send-button" type="submit" title="Send">
+                        <svg fill="#007aff" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
                 </form>
             </div>
         </div>
@@ -149,7 +182,8 @@
             const imageUploadInput = document.getElementById('image-upload-input');
             const imageUploadBtn = document.getElementById('image-upload-btn');
             const typingIndicator = document.getElementById('typing-indicator');
-
+            const headerProfilePic = document.getElementById('header-profile-pic');
+            
             let currentUser = localStorage.getItem('chat_username');
             let ws;
             let typingTimeout;
@@ -167,6 +201,7 @@
 
             const transitionToChat = () => {
                 setActiveScreen('chat');
+                headerProfilePic.textContent = currentUser.charAt(0).toUpperCase();
                 loadMessageHistory();
                 connectWebSocket();
             };
@@ -179,7 +214,7 @@
             };
 
             const scrollToBottom = () => {
-                messageContainer.scrollTo({ top: messageContainer.scrollHeight, behavior: 'smooth' });
+                messageContainer.scrollTop = messageContainer.scrollHeight;
             };
 
             const createMessageElement = (msg) => {
@@ -216,9 +251,11 @@
 
             const displayMessage = (message, isNew = false) => {
                 const el = createMessageElement(message);
-                messageContainer.insertBefore(el, messageContainer.firstChild);
-                if (isNew) {
-                    scrollToBottom();
+                // Use appendChild because the container is reversed with flexbox
+                messageContainer.appendChild(el);
+                 if (isNew) {
+                    // Smooth scroll for new messages
+                    el.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
             };
             
@@ -229,9 +266,6 @@
                     typingIndicator.innerHTML = '';
                     return;
                 }
-                const names = Array.from(currentlyTyping);
-                let text = `${names.slice(0, 2).join(', ')} is typing...`;
-                if (names.length > 2) text = 'Several people are typing...';
                 
                 typingIndicator.innerHTML = `
                     <div class="typing-indicator-bubble">
@@ -246,8 +280,7 @@
                     const res = await fetch(`${RENDER_URL}/messages`);
                     const messages = await res.json();
                     messageContainer.innerHTML = '';
-                    // Display messages in reverse order so newest are at the bottom
-                    messages.reverse().forEach(msg => displayMessage(msg));
+                    messages.forEach(msg => displayMessage(msg));
                     scrollToBottom();
                 } catch (error) { console.error('Failed to load history:', error); }
             };
@@ -268,13 +301,11 @@
                 
                 ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    
-                    // --- Diagnostic Console Log ---
                     console.log('Received WebSocket message:', data);
 
                     if (data.type === 'newChatMessage') {
                         displayMessage(data, true);
-                    } else if (data.type === 'userTyping') {
+                    } else if (data.type === 'userTyping' && data.username !== currentUser) {
                         currentlyTyping.add(data.username);
                         updateTypingIndicator();
                     } else if (data.type === 'userStopTyping') {
@@ -311,7 +342,6 @@
                 if (text && ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({ type: 'chatMessage', username: currentUser, text }));
                     messageInput.value = '';
-                    // Stop typing indicator after sending
                     clearTimeout(typingTimeout);
                     ws.send(JSON.stringify({ type: 'stopTyping' }));
                 }
@@ -324,13 +354,11 @@
             
             messageInput.addEventListener('input', () => {
                 if (!ws || ws.readyState !== WebSocket.OPEN) return;
-                
                 clearTimeout(typingTimeout);
                 ws.send(JSON.stringify({ type: 'typing' }));
-                
                 typingTimeout = setTimeout(() => {
                     ws.send(JSON.stringify({ type: 'stopTyping' }));
-                }, 2000); // 2 seconds
+                }, 2000);
             });
 
             imageUploadBtn.addEventListener('click', () => imageUploadInput.click());

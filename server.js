@@ -77,66 +77,64 @@ wss.on('connection', ws => {
         try {
             const data = JSON.parse(message);
 
-            // Associate username with the connection for other events
-            if (data.type === 'registerUser') {
-                ws.username = data.username;
-                console.log(`Connection now associated with user: ${ws.username}`);
-                return; 
-            }
-            
-            // --- SIMPLIFIED AND CORRECTED BROADCAST LOGIC ---
-            const broadcast = (messageData, excludeSender = false) => {
-                const dataToSend = JSON.stringify(messageData);
+            // Simple function to broadcast to all clients
+            const broadcast = (messageData) => {
+                const dataString = JSON.stringify(messageData);
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
-                        if (excludeSender && client === ws) return;
-                        client.send(dataToSend);
+                        client.send(dataString);
+                    }
+                });
+            };
+            
+            // Simple function to broadcast to all clients EXCEPT the sender
+            const broadcastToOthers = (messageData) => {
+                const dataString = JSON.stringify(messageData);
+                wss.clients.forEach(client => {
+                    if (client !== ws && client.readyState === WebSocket.OPEN) {
+                        client.send(dataString);
                     }
                 });
             };
 
-            // Handle typing indicators
-            if (data.type === 'typing') {
-                broadcast({ type: 'userTyping', username: ws.username }, true); // Exclude sender
-                return;
-            }
-            if (data.type === 'stopTyping') {
-                broadcast({ type: 'userStopTyping', username: ws.username }, true); // Exclude sender
-                return;
-            }
-
-            // Process and store new chat messages
-            let newMessage;
-            const commonData = { 
-                id: uuidv4(), 
-                username: data.username, 
-                timestamp: new Date().toISOString() 
-            };
-            
-            if (!commonData.username) {
-                console.error("Received message without a username. Discarding.");
-                return;
-            }
-
+            // Handle different message types
             switch (data.type) {
-                case 'chatMessage':
-                    newMessage = { ...commonData, type: 'text', content: data.text };
+                case 'registerUser':
+                    ws.username = data.username;
+                    console.log(`Connection now associated with user: ${ws.username}`);
                     break;
-                case 'imageMessage':
-                    newMessage = { ...commonData, type: 'image', content: data.filePath };
+
+                case 'typing':
+                    broadcastToOthers({ type: 'userTyping', username: ws.username });
                     break;
-                case 'audioMessage':
-                    newMessage = { ...commonData, type: 'audio', content: data.filePath };
+
+                case 'stopTyping':
+                    broadcastToOthers({ type: 'userStopTyping', username: ws.username });
                     break;
-            }
-            
-            if (newMessage) {
-                const messages = await readJsonFile(MESSAGES_FILE);
-                messages.push(newMessage);
-                await writeJsonFile(MESSAGES_FILE, messages);
                 
-                // Broadcast the new message to ALL connected clients.
-                broadcast({ type: 'newChatMessage', ...newMessage });
+                case 'chatMessage':
+                case 'imageMessage':
+                case 'audioMessage':
+                    if (!data.username) {
+                        console.error("Received message without a username. Discarding.");
+                        return;
+                    }
+
+                    const newMessage = {
+                        id: uuidv4(),
+                        username: data.username,
+                        timestamp: new Date().toISOString(),
+                        type: data.type === 'chatMessage' ? 'text' : (data.type === 'imageMessage' ? 'image' : 'audio'),
+                        content: data.text || data.filePath
+                    };
+
+                    const messages = await readJsonFile(MESSAGES_FILE);
+                    messages.push(newMessage);
+                    await writeJsonFile(MESSAGES_FILE, messages);
+                    
+                    // Broadcast the newly created message to ALL clients
+                    broadcast({ type: 'newChatMessage', ...newMessage });
+                    break;
             }
         } catch (error) { console.error('Failed to process WebSocket message:', error); }
     });
