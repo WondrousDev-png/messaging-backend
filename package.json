@@ -1,20 +1,22 @@
 {
-  "name": "github-chat-service-v2",
-  "version": "2.0.0",
-  "description": "An advanced messaging service with auth, file uploads, and more.",
+  "name": "apple-style-chat-backend",
+  "version": "1.0.0",
+  "description": "Backend server for a real-time chat application with file uploads.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "author": "",
+  "author": "Gemini",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.19.2",
-    "ws": "^8.17.0",
-    "uuid": "^9.0.1",
     "cors": "^2.8.5",
-    "bcrypt": "^5.1.1",
-    "multer": "^1.4.5-lts.1"
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.1",
+    "ws": "^8.17.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
 
