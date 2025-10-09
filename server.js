@@ -1,8 +1,8 @@
 // ---
-// Title: Robust Real-Time Chat Server (updated)
-// Author: Gemini (updated)
-// Notes: safer startup, clearer broadcast payload (messageType), WS heartbeat,
-//        and improved JSON file handling.
+// Title: Brand New Chat Server
+// Author: Gemini
+// Description: A completely new, from-scratch backend for a real-time chat application.
+// This version uses a simplified and more robust broadcasting method to fix messaging issues.
 // ---
 
 const express = require('express');
@@ -10,7 +10,6 @@ const http = require('http');
 const path = require('path');
 const { WebSocketServer, WebSocket } = require('ws');
 const fs = require('fs').promises;
-const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const multer = require('multer');
@@ -19,7 +18,7 @@ const multer = require('multer');
 const app = express();
 const server = http.createServer(app);
 app.use(express.json());
-app.use(cors()); // Allows your front-end to connect
+app.use(cors());
 
 // --- File Storage Setup ---
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -36,230 +35,102 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Serve static files (like uploaded images) from the 'public' folder
-app.use(express.static('public'));
+app.use(express.static('public')); // Serve uploaded files
 
-// --- Helper Functions for Reading/Writing JSON ---
-async function ensureDir(dirPath) {
-    await fs.mkdir(dirPath, { recursive: true });
-}
+// --- Helper Functions ---
+const readJson = async (filePath) => JSON.parse(await fs.readFile(filePath, 'utf8').catch(() => '[]'));
+const writeJson = async (filePath, data) => fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
-const readJsonFile = async (filePath) => {
-    try {
-        const raw = await fs.readFile(filePath, 'utf8');
-        // If file empty, treat as empty array
-        if (!raw || raw.trim() === '') return [];
-        return JSON.parse(raw);
-    } catch (err) {
-        // File missing / unreadable -> return empty array
-        return [];
-    }
-};
-
-const writeJsonFile = async (filePath, data) => {
-    const dir = path.dirname(filePath);
-    await ensureDir(dir);
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-};
-
-// --- API Endpoints (for history, registration, uploads) ---
-app.get('/messages', async (req, res) => {
-    try {
-        const msgs = await readJsonFile(MESSAGES_FILE);
-        res.json(msgs);
-    } catch (err) {
-        console.error('Error reading messages:', err);
-        res.status(500).json([]);
-    }
-});
+// --- API Endpoints ---
+app.get('/messages', async (req, res) => res.json(await readJson(MESSAGES_FILE)));
 
 app.post('/register', async (req, res) => {
     const { username } = req.body;
-    if (!username || username.trim().length < 3) {
-        return res.status(400).json({ success: false, message: 'Username must be at least 3 characters.' });
+    if (!username || username.trim().length < 2) {
+        return res.status(400).json({ message: 'Username must be at least 2 characters.' });
     }
-    try {
-        const users = await readJsonFile(USERS_FILE);
-        if (users.find(u => u.toLowerCase() === username.toLowerCase())) {
-            return res.status(409).json({ success: false, message: 'Username is already taken.' });
-        }
-        users.push(username);
-        await writeJsonFile(USERS_FILE, users);
-        res.status(201).json({ success: true, message: 'Username registered successfully.' });
-    } catch (err) {
-        console.error('Error registering user:', err);
-        res.status(500).json({ success: false, message: 'Server error' });
+    const users = await readJson(USERS_FILE);
+    if (users.find(u => u.toLowerCase() === username.toLowerCase())) {
+        return res.status(409).json({ message: 'This username is already taken.' });
     }
+    users.push(username);
+    await writeJson(USERS_FILE, users);
+    res.status(201).json({ success: true });
 });
 
 app.post('/upload', upload.single('media'), (req, res) => {
-    if (!req.file) return res.status(400).send({ success: false, message: 'No file was uploaded.' });
-    // Return the public path (front-end will typically prefix with location.origin)
-    res.status(201).send({ success: true, filePath: `/uploads/${req.file.filename}` });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
+    res.status(201).json({ success: true, filePath: `/uploads/${req.file.filename}` });
 });
 
-// --- WebSocket Server for Real-Time Communication ---
+// --- WebSocket Server ---
 const wss = new WebSocketServer({ server });
 
-// Simple heartbeat implementation to detect broken clients
-function noop() {}
-function heartbeat() {
-    this.isAlive = true;
-}
+// Simple and reliable broadcast function
+const broadcast = (data) => {
+    const payload = JSON.stringify(data);
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+        }
+    });
+};
 
-wss.on('connection', (ws) => {
-    console.log('A new client connected.');
-    ws.isAlive = true;
-    ws.on('pong', heartbeat);
+wss.on('connection', ws => {
+    console.log('Client connected.');
 
     ws.on('message', async (message) => {
         let data;
-        try {
-            data = JSON.parse(message);
-        } catch (error) {
-            console.error('Received non-JSON message:', message);
-            return;
-        }
+        try { data = JSON.parse(message); } catch (e) { return; }
 
-        // console.log('Received message from client:', data);
+        switch (data.type) {
+            case 'register':
+                ws.username = data.username;
+                break;
 
-        // Register user for typing indicators
-        if (data.type === 'registerUser') {
-            ws.username = data.username;
-            return;
-        }
+            case 'typing_start':
+                broadcast({ type: 'user_typing', username: ws.username });
+                break;
 
-        // Typing indicators (broadcast to others)
-        if (data.type === 'typing' || data.type === 'stopTyping') {
-            // broadcast to other clients
-            wss.clients.forEach(client => {
-                if (client !== ws && client.readyState === WebSocket.OPEN) {
-                    try {
-                        client.send(JSON.stringify({
-                            type: data.type === 'typing' ? 'userTyping' : 'userStopTyping',
-                            username: ws.username || data.username || 'Anonymous'
-                        }));
-                    } catch (err) {
-                        console.warn('Failed to send typing indicator to a client:', err);
-                    }
-                }
-            });
-            return;
-        }
+            case 'typing_stop':
+                broadcast({ type: 'user_stop_typing', username: ws.username });
+                break;
 
-        // New chat messages (text, image, audio)
-        if (['chatMessage', 'imageMessage', 'audioMessage'].includes(data.type)) {
-            if (!data.username) {
-                console.error('Message received without a username:', data);
-                return;
-            }
+            case 'text_message':
+            case 'image_message':
+                const newMessage = {
+                    id: uuidv4(),
+                    username: ws.username,
+                    timestamp: new Date().toISOString(),
+                    type: data.type === 'text_message' ? 'text' : 'image',
+                    content: data.content,
+                };
 
-            const newMessage = {
-                id: uuidv4(),
-                username: data.username,
-                timestamp: new Date().toISOString(),
-                // normalize the message type into messageType so envelope type remains 'newChatMessage'
-                type: data.type === 'chatMessage' ? 'text' : (data.type === 'imageMessage' ? 'image' : 'audio'),
-                content: data.text || data.filePath || '' // text messages use `text`, uploads use `filePath`
-            };
-
-            try {
-                // 1) Save to history (append)
-                const messages = await readJsonFile(MESSAGES_FILE);
+                const messages = await readJson(MESSAGES_FILE);
                 messages.push(newMessage);
-                await writeJsonFile(MESSAGES_FILE, messages);
-            } catch (err) {
-                console.error('Failed to save message to disk:', err);
-                // continue to broadcast even if saving fails
-            }
+                await writeJson(MESSAGES_FILE, messages);
 
-            // 2) Broadcast to all connected clients
-            const broadcastPayload = {
-                type: 'newChatMessage',      // envelope type for clients to listen to
-                id: newMessage.id,
-                username: newMessage.username,
-                timestamp: newMessage.timestamp,
-                messageType: newMessage.type, // explicit field for message content type: 'text' | 'image' | 'audio'
-                content: newMessage.content
-            };
-
-            const payloadString = JSON.stringify(broadcastPayload);
-
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    try {
-                        client.send(payloadString);
-                    } catch (err) {
-                        console.warn('Failed to send message to a client:', err);
-                    }
-                }
-            });
+                broadcast({ type: 'new_message', ...newMessage });
+                break;
         }
     });
 
     ws.on('close', () => {
         console.log(`Client ${ws.username || ''} disconnected.`);
-        // Notify others that the user stopped typing when they disconnect
         if (ws.username) {
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    try {
-                        client.send(JSON.stringify({ type: 'userStopTyping', username: ws.username }));
-                    } catch (err) {
-                        // ignore
-                    }
-                }
-            });
+            broadcast({ type: 'user_stop_typing', username: ws.username });
         }
     });
-
-    ws.on('error', (error) => console.error('A WebSocket error occurred:', error));
+    ws.on('error', (err) => console.error('WebSocket error:', err));
 });
-
-// Heartbeat interval to terminate dead connections
-const interval = setInterval(() => {
-    wss.clients.forEach((ws) => {
-        if (ws.isAlive === false) {
-            try { ws.terminate(); } catch (e) {}
-            return;
-        }
-        ws.isAlive = false;
-        try { ws.ping(noop); } catch (e) {}
-    });
-}, 30000);
 
 // --- Server Initialization ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
-    try {
-        // Ensure directories exist
-        await ensureDir(DATA_DIR);
-        await ensureDir(path.join(__dirname, 'public'));
-        await ensureDir(UPLOADS_DIR);
-
-        // Ensure JSON files exist (don't overwrite existing data)
-        if (!fsSync.existsSync(USERS_FILE)) {
-            await writeJsonFile(USERS_FILE, []);
-        }
-        if (!fsSync.existsSync(MESSAGES_FILE)) {
-            await writeJsonFile(MESSAGES_FILE, []);
-        }
-
-        console.log(`Server is running and listening on port ${PORT}`);
-    } catch (err) {
-        console.error('Failed to initialize server files/directories:', err);
-        process.exit(1);
-    }
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.mkdir(UPLOADS_DIR, { recursive: true });
+    await writeJson(USERS_FILE, await readJson(USERS_FILE));
+    await writeJson(MESSAGES_FILE, await readJson(MESSAGES_FILE));
+    console.log(`Server is sparkling on port ${PORT}`);
 });
 
-// Clean up on process exit
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down.');
-    clearInterval(interval);
-    server.close(() => process.exit(0));
-});
-process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down.');
-    clearInterval(interval);
-    server.close(() => process.exit(0));
-});

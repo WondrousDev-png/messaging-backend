@@ -1,582 +1,323 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>iMessage-style Chat</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chat App</title>
     <style>
-        /* --- Fonts --- */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-
         :root {
-            --bg: #f3f3f7;
-            --card: rgba(255,255,255,0.7);
-            --muted: #8e8e93;
-            --sent-grad: linear-gradient(135deg,#007aff,#34c759 60%);
-            --sent-text: #fff;
-            --recv-bg: #e5e5ea;
-            --recv-text: #000;
-            --header-blur: rgba(255,255,255,0.6);
-            --input-bg: rgba(255,255,255,0.9);
-            --shadow: 0 8px 24px rgba(23,23,23,0.12);
-            font-synthesis: none;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --background: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-primary: #050505;
+            --text-secondary: #65676b;
+            --accent-color: #007aff;
+            --sent-bubble-bg: #007aff;
+            --sent-bubble-text: #ffffff;
+            --received-bubble-bg: #e4e6eb;
+            --received-bubble-text: #050505;
+            --border-color: #ced0d4;
         }
 
-        /* Dark mode variables */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: linear-gradient(180deg,#0b1220,#08101a);
-                --card: rgba(12,12,14,0.6);
-                --muted: #9aa3b2;
-                --sent-grad: linear-gradient(135deg,#007aff,#00a3ff 60%);
-                --sent-text: #ffffff;
-                --recv-bg: rgba(255,255,255,0.06);
-                --recv-text: #e6eef8;
-                --header-blur: rgba(6,6,8,0.6);
-                --input-bg: rgba(10,10,12,0.45);
-                --shadow: 0 12px 36px rgba(2,6,23,0.6);
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--background);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .chat-app-container {
+            width: 100%;
+            height: 100%;
+            background-color: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        @media (min-width: 600px) {
+            .chat-app-container {
+                max-width: 400px;
+                max-height: 85vh;
+                border-radius: 1.5rem;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                border: 1px solid #e0e0e0;
             }
         }
 
-        /* Base layout */
-        html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-        body{
-            background: var(--bg);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-        }
+        .screen { display: none; flex-direction: column; height: 100%; }
+        .screen.active { display: flex; }
 
-        .chat-frame{
-            width:100%;
-            max-width:420px;
-            height:92vh;
-            border-radius:22px;
-            overflow:hidden;
-            display:flex;
-            flex-direction:column;
-            background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18));
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255,255,255,0.06);
-            backdrop-filter: blur(10px);
+        /* --- Login Screen --- */
+        #login-screen {
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
         }
+        #login-screen h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        #login-screen p { color: var(--text-secondary); margin-bottom: 2rem; }
+        #login-form { width: 100%; max-width: 300px; }
+        .form-input { width: 100%; padding: 14px; font-size: 1rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 1rem; }
+        .form-button { width: 100%; padding: 14px; font-size: 1rem; font-weight: 600; border: none; border-radius: 12px; background-color: var(--accent-color); color: white; cursor: pointer; }
+        #login-error { color: #e74c3c; margin-top: 1rem; height: 1em; }
 
-        /* Header (iMessage style) */
-        .chat-header{
-            display:flex;
-            align-items:center;
-            gap:12px;
-            padding:12px 16px;
-            background: var(--header-blur);
-            backdrop-filter: blur(14px);
-            border-bottom: 1px solid rgba(0,0,0,0.06);
-            flex-shrink:0;
+        /* --- Chat Screen --- */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: var(--card-bg);
+            flex-shrink: 0;
         }
-        .avatar{
-            width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;
-            background: linear-gradient(135deg,#cfcfcf,#bdbdbd);
-            flex-shrink:0;
-            font-size:18px;
+        .header-title { font-weight: 600; font-size: 1.2rem; }
+        
+        .messages-container {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
-        .title-block{display:flex;flex-direction:column;line-height:1;}
-        .title{font-weight:700;}
-        .subtitle{font-size:12px;color:var(--muted);}
+        
+        .message-group { display: flex; flex-direction: column; margin-bottom: 1rem; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 20px; word-wrap: break-word; line-height: 1.4; animation: popIn 0.3s ease; }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .sent { align-self: flex-end; }
+        .sent .message-bubble { background-color: var(--sent-bubble-bg); color: var(--sent-bubble-text); }
+        
+        .received { align-self: flex-start; }
+        .received .message-bubble { background-color: var(--received-bubble-bg); color: var(--received-bubble-text); }
+        .received .author { font-size: 0.75rem; font-weight: 600; margin-left: 5px; margin-bottom: 4px; color: var(--text-secondary); }
 
-        /* Messages area */
-        .messages{
-            flex:1;
-            padding:16px;
-            display:flex;
-            flex-direction:column;
-            gap:10px;
-            overflow-y:auto;
-            -webkit-overflow-scrolling:touch;
-            background: linear-gradient(180deg, transparent, rgba(0,0,0,0.02));
+        .message-bubble img { display: block; max-width: 100%; border-radius: 18px; margin-top: 5px; }
+
+        .chat-input-area {
+            display: flex;
+            padding: 0.75rem;
+            border-top: 1px solid #e0e0e0;
+            background-color: #f9f9f9;
+            flex-shrink: 0;
         }
+        #message-form { display: flex; width: 100%; gap: 0.5rem; align-items: center; }
+        #message-input { flex: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; font-size: 1rem; resize: none; }
+        .icon-button { background: none; border: none; cursor: pointer; padding: 8px; }
+        .icon-button svg { width: 24px; height: 24px; color: var(--accent-color); }
 
-        .message-row{display:flex;flex-direction:column;max-width:80%; animation: fadeUp 360ms cubic-bezier(.2,.9,.2,1); }
-        @keyframes fadeUp { from { transform: translateY(8px); opacity:0 } to { transform: translateY(0); opacity:1 } }
+        #typing-indicator { height: 20px; padding: 0 1rem; color: var(--text-secondary); font-style: italic; font-size: 0.9rem; }
 
-        .message-row.sent{align-self:flex-end; align-items:flex-end;}
-        .message-row.received{align-self:flex-start; align-items:flex-start;}
-
-        .bubble{
-            padding:10px 14px;border-radius:18px;line-height:1.3;font-size:15px;box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            max-width:100%;
-            display:inline-block;
-        }
-
-        .bubble.sent{
-            background: var(--sent-grad);
-            color: var(--sent-text);
-            border-bottom-right-radius:4px;
-            border-bottom-left-radius:18px;
-        }
-        .bubble.received{
-            background: var(--recv-bg);
-            color: var(--recv-text);
-            border-bottom-left-radius:4px;
-            border-bottom-right-radius:18px;
-        }
-
-        .meta{font-size:11px;color:var(--muted);margin-bottom:4px;}
-
-        .bubble img{max-width:320px;border-radius:14px;display:block;}
-        .bubble audio{width:100%;margin-top:4px;}
-
-        /* typing indicator */
-        .typing{height:28px;padding-left:10px;color:var(--muted);display:flex;align-items:center;}
-        .dots{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:16px;background:var(--recv-bg);}
-        .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transform:scale(0.6);animation: bounce 1s infinite ease-in-out;}
-        .dot:nth-child(2){animation-delay:0.12s}
-        .dot:nth-child(3){animation-delay:0.24s}
-        @keyframes bounce{0%,80%,100%{transform:scale(.6)}40%{transform:scale(1)}}
-
-        /* Input area */
-        .composer{
-            padding:10px 12px;
-            display:flex;
-            gap:8px;
-            align-items:center;
-            background: var(--header-blur);
-            border-top:1px solid rgba(0,0,0,0.06);
-            flex-shrink:0;
-        }
-        .input{
-            flex:1;
-            display:flex;
-            align-items:center;
-            gap:8px;
-            padding:8px 10px;
-            background:var(--input-bg);
-            border-radius:999px;
-            border:1px solid rgba(0,0,0,0.06);
-        }
-        .input input[type="text"]{
-            border:none;outline:none;background:transparent;font-size:15px;color:inherit;width:100%;
-        }
-        .icon-btn{border:none;background:transparent;padding:6px;cursor:pointer;display:flex;align-items:center;}
-        .send-btn{
-            background:transparent;border:none;color:var(--sent-grad);font-weight:700;padding:8px 12px;border-radius:12px;cursor:pointer;
-        }
-
-        /* small helpers */
-        .muted{color:var(--muted);font-size:13px}
-        .sending{opacity:0.65;transform:translateY(4px);filter:grayscale(.02) brightness(.98) }
-
-        /* responsive tweaks */
-        @media (max-width:420px){
-            .chat-frame{height:100vh;border-radius:0;max-width:100%;}
-            .messages{padding:12px;}
-        }
     </style>
 </head>
 <body>
-    <div class="chat-frame" role="application">
-        <!-- Username / Join UI (overlay when no username) -->
-        <div id="join-screen" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:transparent;z-index:40;">
-            <div style="width:94%;max-width:360px;background:var(--card);padding:18px;border-radius:14px;box-shadow:var(--shadow);text-align:center;">
-                <h2 style="margin:0 0 6px 0">Welcome to Chat</h2>
-                <p style="margin:0 0 14px;color:var(--muted)">Pick a display name to join the public chat.</p>
-                <form id="join-form" style="display:flex;gap:8px;justify-content:center;">
-                    <input id="username" type="text" placeholder="Your name" required style="padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);min-width:0;flex:1;font-size:15px">
-                    <button type="submit" style="padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(135deg,#007aff,#00c6ff);color:white;font-weight:700;cursor:pointer">Join</button>
+    <div class="chat-app-container">
+        <!-- Screen 1: Login -->
+        <div id="login-screen" class="screen active">
+            <h1>Welcome Back</h1>
+            <p>Please enter a username to join the chat.</p>
+            <form id="login-form">
+                <input id="username-input" class="form-input" placeholder="Your Username" autocomplete="off" required>
+                <button type="submit" class="form-button">Join Chat</button>
+                <p id="login-error"></p>
+            </form>
+        </div>
+
+        <!-- Screen 2: Chat -->
+        <div id="chat-screen" class="screen">
+            <header class="chat-header">
+                <h2 class="header-title">Public Chat Room</h2>
+            </header>
+            <div class="messages-container" id="messages-container"></div>
+            <p id="typing-indicator"></p>
+            <div class="chat-input-area">
+                <form id="message-form">
+                    <input type="file" id="image-input" accept="image/*" style="display: none;">
+                    <button type="button" class="icon-button" id="attach-button" title="Send Image">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+                    </button>
+                    <input id="message-input" placeholder="Type a message..." autocomplete="off">
+                    <button type="submit" class="icon-button" id="send-button" title="Send">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
                 </form>
-                <p id="join-error" class="muted" style="height:18px;margin-top:10px"></p>
             </div>
-        </div>
-
-        <header class="chat-header">
-            <div class="avatar" id="header-avatar">P</div>
-            <div class="title-block">
-                <div class="title" id="header-title">Public Chat</div>
-                <div class="subtitle" id="header-sub">iMessage-style • Real-time</div>
-            </div>
-        </header>
-
-        <main class="messages" id="messages" aria-live="polite"></main>
-
-        <div id="typing-area" class="typing" style="display:none">
-            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-            <div style="margin-left:8px;color:var(--muted);font-size:13px" id="typing-text"></div>
-        </div>
-
-        <div class="composer">
-            <div class="input" role="group" aria-label="Message composer">
-                <button id="attach-btn" class="icon-btn" title="Attach image">
-                    <!-- simple paperclip icon -->
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 13v6a3 3 0 0 1-3 3H6a4 4 0 0 1-4-4V7a3 3 0 0 1 3-3h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div style="flex:1;display:flex;align-items:center;">
-                    <input id="message-input" type="text" placeholder="iMessage" autocomplete="off" />
-                </div>
-                <button id="send-btn" class="send-btn" title="Send">Send</button>
-            </div>
-            <input id="file-input" type="file" accept="image/*" style="display:none" />
         </div>
     </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const joinScreen = document.getElementById('join-screen');
-    const joinForm = document.getElementById('join-form');
-    const usernameInput = document.getElementById('username');
-    const joinError = document.getElementById('join-error');
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const RENDER_URL = 'https://my-cool-chat-app.onrender.com'; // IMPORTANT: Replace with your Render URL
 
-    const headerAvatar = document.getElementById('header-avatar');
-    const headerTitle = document.getElementById('header-title');
-    const messagesEl = document.getElementById('messages');
-    const messageInput = document.getElementById('message-input');
-    const sendBtn = document.getElementById('send-btn');
-    const attachBtn = document.getElementById('attach-btn');
-    const fileInput = document.getElementById('file-input');
-    const typingArea = document.getElementById('typing-area');
-    const typingText = document.getElementById('typing-text');
+            const screens = {
+                login: document.getElementById('login-screen'),
+                chat: document.getElementById('chat-screen')
+            };
+            const loginForm = document.getElementById('login-form');
+            const usernameInput = document.getElementById('username-input');
+            const loginError = document.getElementById('login-error');
+            const messageForm = document.getElementById('message-form');
+            const messageInput = document.getElementById('message-input');
+            const messagesContainer = document.getElementById('messages-container');
+            const attachButton = document.getElementById('attach-button');
+            const imageInput = document.getElementById('image-input');
+            const typingIndicator = document.getElementById('typing-indicator');
 
-    let ws = null;
-    let currentUser = localStorage.getItem('chat_username') || null;
-    let typingTimeout = null;
-    const currentlyTyping = new Set();
+            let currentUser = null;
+            let ws;
+            let typingTimeout;
 
-    // Helper: scroll to bottom
-    function scrollBottom(smooth = true){
-        if(!messagesEl) return;
-        if(smooth) messagesEl.lastElementChild?.scrollIntoView({behavior:'smooth', block:'end'});
-        else messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
+            // --- Core Functions ---
+            const switchScreen = (screenName) => {
+                Object.values(screens).forEach(s => s.classList.remove('active'));
+                screens[screenName].classList.add('active');
+            };
 
-    // create message DOM node
-    function createMessageNode(msg, opts = {}) {
-        // opts: { temp: boolean, sending: boolean }
-        const row = document.createElement('div');
-        row.className = 'message-row ' + (msg.username === currentUser ? 'sent' : 'received');
-        if(opts.sending) row.classList.add('sending');
-        if(opts.temp) {
-            row.dataset.tempUsername = msg.username || '';
-            row.dataset.tempContent = msg.content || '';
-        }
-        // optional username label for received
-        if(msg.username !== currentUser){
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            meta.textContent = msg.username;
-            row.appendChild(meta);
-        }
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble ' + (msg.username === currentUser ? 'sent' : 'received');
+            const scrollToBottom = () => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
 
-        if(msg.type === 'text'){
-            bubble.textContent = msg.content;
-        } else if (msg.type === 'image'){
-            const img = document.createElement('img');
-            // msg.content expected to be full path like '/uploads/abc.jpg' or absolute url
-            img.src = (msg.content.startsWith('http') ? msg.content : location.origin + msg.content);
-            img.alt = 'Image';
-            img.loading = 'lazy';
-            bubble.appendChild(img);
-        } else if (msg.type === 'audio'){
-            const audio = document.createElement('audio');
-            audio.controls = true;
-            audio.src = (msg.content.startsWith('http') ? msg.content : location.origin + msg.content);
-            bubble.appendChild(audio);
-        }
+            // --- Message Display ---
+            const createMessageElement = (msg) => {
+                const group = document.createElement('div');
+                group.className = 'message-group ' + (msg.username === currentUser ? 'sent' : 'received');
 
-        row.appendChild(bubble);
-        return row;
-    }
-
-    // display message, with optional de-dup logic for local-temp entries
-    function displayMessage(msg, { isNew = false, temp = false, sending = false } = {}) {
-        // remove any local temp duplicates if server message arrives
-        if(!temp){
-            // find a temp node that matches username + content (best-effort)
-            const children = Array.from(messagesEl.children);
-            for(const child of children){
-                const tn = child.dataset.tempUsername;
-                const tc = child.dataset.tempContent;
-                if(tn && tc && tn === msg.username && tc === msg.content){
-                    child.remove(); // remove temporary local one
-                }
-            }
-        }
-
-        const node = createMessageNode(msg, { temp, sending });
-        if(isNew) {
-            // put at end and scroll into view smoothly
-            messagesEl.appendChild(node);
-            node.scrollIntoView({behavior:'smooth', block:'end'});
-        } else {
-            messagesEl.appendChild(node);
-        }
-        // small cleanup scroll
-        setTimeout(() => scrollBottom(false), 60);
-    }
-
-    // fetch message history and render
-    async function loadMessageHistory(){
-        try {
-            const res = await fetch(`${location.origin}/messages`);
-            if(!res.ok) throw new Error('Failed to load');
-            const msgs = await res.json();
-            messagesEl.innerHTML = '';
-            msgs.forEach(m => displayMessage(m, { isNew: false }));
-            scrollBottom(false);
-        } catch (e) {
-            console.error('Error loading history:', e);
-        }
-    }
-
-    // typing UI update
-    function updateTypingUI(){
-        if(currentlyTyping.size === 0){
-            typingArea.style.display = 'none';
-            typingText.textContent = '';
-        } else {
-            typingArea.style.display = 'flex';
-            // show a small "X is typing" text (if more than one, show count)
-            if(currentlyTyping.size === 1){
-                typingText.textContent = Array.from(currentlyTyping)[0] + ' is typing';
-            } else {
-                typingText.textContent = `${currentlyTyping.size} people are typing`;
-            }
-        }
-    }
-
-    // WebSocket connect/reconnect
-    let reconnectTimer = null;
-    function connectWebSocket(){
-        const wsUrl = location.origin.replace(/^http/, 'ws');
-        ws = new WebSocket(wsUrl);
-
-        ws.addEventListener('open', () => {
-            console.log('WS connected');
-            if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
-            // re-register username after connection
-            if(currentUser){
-                ws.send(JSON.stringify({ type:'registerUser', username: currentUser }));
-            }
-            // reload history to sync any missed messages
-            loadMessageHistory();
-        });
-
-        ws.addEventListener('message', (ev) => {
-            try {
-                const data = JSON.parse(ev.data);
-                // debug
-                // console.log('WS IN', data);
-
-                if(data.type === 'newChatMessage'){
-                    // server shape: { type:'newChatMessage', id, username, timestamp, content, type? }
-                    // unify shape: ensure data.type -> message.type is one of 'text'|'image'|'audio'
-                    const msgType = (data.type === 'newChatMessage' && data.type) ? null : null;
-                    // Our server used 'type' for both envelope and message type; but server built payload as {type:'newChatMessage', id, username, timestamp, type: 'text'|'image'|'audio', content }
-                    // handle both shapes:
-                    const message = {
-                        id: data.id || data._id || null,
-                        username: data.username,
-                        timestamp: data.timestamp || data.time,
-                        type: data.type === 'newChatMessage' && data.content && data.hasOwnProperty('type') ? data.type : data.type,
-                        // The server included a field named 'type' both as envelope and message type; but previously you had server sending {type:'newChatMessage', ...newMessage}
-                        // To be robust, check for 'text'/'image'/'audio' in payload
-                        content: data.content ?? data.text ?? data.filePath ?? data.file
-                    };
-
-                    // If server's message.type field exists and equals 'text'/'image'/'audio', use it
-                    if(data.messageType) message.type = data.messageType;
-                    if(data.typeMessage) message.type = data.typeMessage;
-                    // fallback: if payload includes property 'type' with value 'text', 'image', etc., use that
-                    if(['text','image','audio'].includes(data.type)) message.type = data.type;
-
-                    // dedupe any temporary local sending entries that match
-                    displayMessage(message, { isNew: true });
+                if (msg.username !== currentUser) {
+                    const author = document.createElement('div');
+                    author.className = 'author';
+                    author.textContent = msg.username;
+                    group.appendChild(author);
                 }
 
-                else if(data.type === 'userTyping' || data.type === 'userStopTyping'){
-                    const username = data.username;
-                    if(data.type === 'userTyping'){
-                        if(username !== currentUser) currentlyTyping.add(username);
-                    } else {
-                        currentlyTyping.delete(username);
-                    }
-                    updateTypingUI();
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+
+                if (msg.type === 'text') {
+                    bubble.textContent = msg.content;
+                } else if (msg.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = `${RENDER_URL}${msg.content}`;
+                    bubble.appendChild(img);
                 }
-            } catch (err){
-                console.error('Failed to parse WS msg', err);
-            }
-        });
+                
+                group.appendChild(bubble);
+                return group;
+            };
 
-        ws.addEventListener('close', () => {
-            console.log('WS closed — reconnecting in 2s');
-            // try reconnecting
-            if(reconnectTimer) clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(connectWebSocket, 2000);
-        });
+            const displayMessage = (msg) => {
+                const el = createMessageElement(msg);
+                messagesContainer.appendChild(el);
+                scrollToBottom();
+            };
 
-        ws.addEventListener('error', (err) => {
-            console.error('WS error', err);
-            ws?.close();
-        });
-    }
+            // --- WebSocket Logic ---
+            const connectWebSocket = () => {
+                const wsUrl = RENDER_URL.replace(/^http/, 'ws');
+                ws = new WebSocket(wsUrl);
 
-    // send text message (instant local render + send)
-    function sendTextMessage(){
-        const text = messageInput.value.trim();
-        if(!text) return;
-        // build a temp message
-        const tempMsg = {
-            id: 'temp-' + Date.now(),
-            username: currentUser,
-            timestamp: new Date().toISOString(),
-            type: 'text',
-            content: text
-        };
-        // show immediately as sending
-        displayMessage(tempMsg, { isNew:true, temp:true, sending:true });
-
-        // attempt to send
-        if(ws && ws.readyState === WebSocket.OPEN){
-            try {
-                ws.send(JSON.stringify({ type:'chatMessage', username: currentUser, text }));
-            } catch(e){
-                console.error('Failed to send ws', e);
-            }
-        } else {
-            // If ws not open, still POST to a backup endpoint? (optional) We will rely on reload/check.
-            console.warn('WS not open: message queued on client only');
-        }
-
-        // stop typing
-        clearTimeout(typingTimeout);
-        if(ws && ws.readyState === WebSocket.OPEN){
-            try { ws.send(JSON.stringify({ type:'stopTyping', username: currentUser })); } catch(e){}
-        }
-
-        messageInput.value = '';
-    }
-
-    // handle image upload: upload to /upload, then display the returned path instantly (server serves it)
-    async function uploadImage(file){
-        const fd = new FormData();
-        fd.append('media', file);
-        try {
-            const res = await fetch(`${location.origin}/upload`, { method:'POST', body: fd });
-            const json = await res.json();
-            if(json.success && json.filePath){
-                const msg = {
-                    id: 'tempimg-' + Date.now(),
-                    username: currentUser,
-                    timestamp: new Date().toISOString(),
-                    type: 'image',
-                    content: json.filePath // begins with /uploads/...
+                ws.onopen = () => {
+                    console.log('Connected to WebSocket server.');
+                    ws.send(JSON.stringify({ type: 'register', username: currentUser }));
                 };
-                // show immediately (no sending flag — we can show as normal)
-                displayMessage(msg, { isNew:true });
-                // send broadcast request to server via ws to save to history
-                if(ws && ws.readyState === WebSocket.OPEN){
-                    ws.send(JSON.stringify({ type:'imageMessage', username: currentUser, filePath: json.filePath }));
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('Received:', data);
+
+                    switch (data.type) {
+                        case 'new_message':
+                            displayMessage(data);
+                            break;
+                        case 'user_typing':
+                            if (data.username !== currentUser) {
+                                typingIndicator.textContent = `${data.username} is typing...`;
+                            }
+                            break;
+                        case 'user_stop_typing':
+                             if (typingIndicator.textContent.includes(data.username)) {
+                                typingIndicator.textContent = '';
+                            }
+                            break;
+                    }
+                };
+
+                ws.onclose = () => {
+                    console.log('Disconnected. Trying to reconnect...');
+                    setTimeout(connectWebSocket, 3000);
+                };
+                ws.onerror = (err) => {
+                    console.error('WebSocket Error:', err);
+                    ws.close();
+                };
+            };
+
+            // --- Event Listeners ---
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = usernameInput.value.trim();
+                try {
+                    const res = await fetch(`${RENDER_URL}/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username })
+                    });
+                    if (res.ok) {
+                        currentUser = username;
+                        switchScreen('chat');
+                        const history = await fetch(`${RENDER_URL}/messages`).then(r => r.json());
+                        messagesContainer.innerHTML = '';
+                        history.forEach(displayMessage);
+                        connectWebSocket();
+                    } else {
+                        const { message } = await res.json();
+                        loginError.textContent = message;
+                    }
+                } catch (err) {
+                    loginError.textContent = 'Could not connect to server.';
                 }
-            } else {
-                console.error('Upload failed', json);
-            }
-        } catch(e){
-            console.error('Image upload exception', e);
-        }
-    }
-
-    // Events
-    joinForm.addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const name = usernameInput.value.trim();
-        if(!name) return;
-        try {
-            const res = await fetch(`${location.origin}/register`, {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ username: name })
             });
-            const json = await res.json();
-            if(!res.ok){
-                joinError.textContent = json?.message || 'Failed to register';
-                setTimeout(()=> joinError.textContent = '', 3000);
-                return;
-            }
-            currentUser = name;
-            localStorage.setItem('chat_username', name);
-            headerAvatar.textContent = name.charAt(0).toUpperCase();
-            joinScreen.style.display = 'none';
-            // load history and open ws
-            loadMessageHistory();
-            connectWebSocket();
-        } catch(err){
-            console.error('Register failed', err);
-            joinError.textContent = 'Server error';
-        }
-    });
 
-    // if user already set, skip join UI
-    if(currentUser){
-        usernameInput.value = currentUser;
-        headerAvatar.textContent = currentUser.charAt(0).toUpperCase();
-        joinScreen.style.display = 'none';
-        loadMessageHistory();
-        connectWebSocket();
-    } else {
-        joinScreen.style.display = '';
-    }
+            messageForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = messageInput.value.trim();
+                if (text) {
+                    ws.send(JSON.stringify({ type: 'text_message', content: text }));
+                    messageInput.value = '';
+                }
+            });
+            
+            messageInput.addEventListener('input', () => {
+                clearTimeout(typingTimeout);
+                ws.send(JSON.stringify({ type: 'typing_start' }));
+                typingTimeout = setTimeout(() => {
+                    ws.send(JSON.stringify({ type: 'typing_stop' }));
+                }, 1500);
+            });
+            
+            attachButton.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
 
-    // send actions
-    sendBtn.addEventListener('click', (e) => { e.preventDefault(); sendTextMessage(); });
-    messageInput.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter' && !e.shiftKey){
-            e.preventDefault();
-            sendTextMessage();
-        }
-    });
+                const formData = new FormData();
+                formData.append('media', file);
 
-    // typing events
-    messageInput.addEventListener('input', () => {
-        if(!ws || ws.readyState !== WebSocket.OPEN) return;
-        try {
-            ws.send(JSON.stringify({ type:'typing', username: currentUser }));
-        } catch(e){}
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            if(ws && ws.readyState === WebSocket.OPEN){
-                try { ws.send(JSON.stringify({ type:'stopTyping', username: currentUser })); } catch(e){}
-            }
-        }, 1600);
-    });
-
-    // attach
-    attachBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (ev) => {
-        const file = ev.target.files?.[0];
-        if(file) uploadImage(file);
-        fileInput.value = '';
-    });
-
-    // allow clicking images to open bigger
-    messagesEl.addEventListener('click', (ev) => {
-        const img = ev.target.closest('img');
-        if(img){
-            // open in new tab
-            window.open(img.src, '_blank');
-        }
-    });
-
-    // If user toggles OS color scheme, browser will change automatically because we use prefers-color-scheme.
-    // But if you want to perform additional JS-driven tweaks on change:
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        // (Pure CSS handles colors; we could animate or adjust icons here if necessary.)
-    });
-
-    // small accessibility: focus message input when typing or after join
-    document.addEventListener('click', (e) => {
-        if(e.target === document.body) messageInput.focus();
-    });
-});
-</script>
+                try {
+                    const res = await fetch(`${RENDER_URL}/upload`, { method: 'POST', body: formData });
+                    const { filePath } = await res.json();
+                    ws.send(JSON.stringify({ type: 'image_message', content: filePath }));
+                } catch (err) {
+                    console.error('Upload failed:', err);
+                }
+                imageInput.value = '';
+            });
+        });
+    </script>
 </body>
 </html>
+

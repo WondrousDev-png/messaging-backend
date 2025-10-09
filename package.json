@@ -1,7 +1,7 @@
 {
-  "name": "apple-style-chat-backend",
+  "name": "gemini-chat-app-backend",
   "version": "1.0.0",
-  "description": "Backend server for a real-time chat application with file uploads.",
+  "description": "A fresh, reliable backend for a real-time chat application.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
