@@ -1,323 +1,77 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chat App</title>
-    <style>
-        :root {
-            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --background: #f0f2f5;
-            --card-bg: #ffffff;
-            --text-primary: #050505;
-            --text-secondary: #65676b;
-            --accent-color: #007aff;
-            --sent-bubble-bg: #007aff;
-            --sent-bubble-text: #ffffff;
-            --received-bubble-bg: #e4e6eb;
-            --received-bubble-text: #050505;
-            --border-color: #ced0d4;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; }
-
-        body {
-            font-family: var(--font-main);
-            background-color: var(--background);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .chat-app-container {
-            width: 100%;
-            height: 100%;
-            background-color: var(--card-bg);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        @media (min-width: 600px) {
-            .chat-app-container {
-                max-width: 400px;
-                max-height: 85vh;
-                border-radius: 1.5rem;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-                border: 1px solid #e0e0e0;
-            }
-        }
-
-        .screen { display: none; flex-direction: column; height: 100%; }
-        .screen.active { display: flex; }
-
-        /* --- Login Screen --- */
-        #login-screen {
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-            text-align: center;
-        }
-        #login-screen h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
-        #login-screen p { color: var(--text-secondary); margin-bottom: 2rem; }
-        #login-form { width: 100%; max-width: 300px; }
-        .form-input { width: 100%; padding: 14px; font-size: 1rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 1rem; }
-        .form-button { width: 100%; padding: 14px; font-size: 1rem; font-weight: 600; border: none; border-radius: 12px; background-color: var(--accent-color); color: white; cursor: pointer; }
-        #login-error { color: #e74c3c; margin-top: 1rem; height: 1em; }
-
-        /* --- Chat Screen --- */
-        .chat-header {
-            display: flex;
-            align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid #e0e0e0;
-            background-color: var(--card-bg);
-            flex-shrink: 0;
-        }
-        .header-title { font-weight: 600; font-size: 1.2rem; }
-        
-        .messages-container {
-            flex: 1;
-            padding: 1rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .message-group { display: flex; flex-direction: column; margin-bottom: 1rem; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 20px; word-wrap: break-word; line-height: 1.4; animation: popIn 0.3s ease; }
-        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        
-        .sent { align-self: flex-end; }
-        .sent .message-bubble { background-color: var(--sent-bubble-bg); color: var(--sent-bubble-text); }
-        
-        .received { align-self: flex-start; }
-        .received .message-bubble { background-color: var(--received-bubble-bg); color: var(--received-bubble-text); }
-        .received .author { font-size: 0.75rem; font-weight: 600; margin-left: 5px; margin-bottom: 4px; color: var(--text-secondary); }
-
-        .message-bubble img { display: block; max-width: 100%; border-radius: 18px; margin-top: 5px; }
-
-        .chat-input-area {
-            display: flex;
-            padding: 0.75rem;
-            border-top: 1px solid #e0e0e0;
-            background-color: #f9f9f9;
-            flex-shrink: 0;
-        }
-        #message-form { display: flex; width: 100%; gap: 0.5rem; align-items: center; }
-        #message-input { flex: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; font-size: 1rem; resize: none; }
-        .icon-button { background: none; border: none; cursor: pointer; padding: 8px; }
-        .icon-button svg { width: 24px; height: 24px; color: var(--accent-color); }
-
-        #typing-indicator { height: 20px; padding: 0 1rem; color: var(--text-secondary); font-style: italic; font-size: 0.9rem; }
-
-    </style>
+  <meta charset="utf-8" />
+  <title>Live Messages</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #msgs { list-style: none; padding: 0; max-width: 800px; }
+    li { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    form { margin-top: 12px; }
+    input, button { padding: 8px; font-size: 14px; }
+  </style>
 </head>
 <body>
-    <div class="chat-app-container">
-        <!-- Screen 1: Login -->
-        <div id="login-screen" class="screen active">
-            <h1>Welcome Back</h1>
-            <p>Please enter a username to join the chat.</p>
-            <form id="login-form">
-                <input id="username-input" class="form-input" placeholder="Your Username" autocomplete="off" required>
-                <button type="submit" class="form-button">Join Chat</button>
-                <p id="login-error"></p>
-            </form>
-        </div>
+  <h1>Live Messages</h1>
+  <div>
+    <input id="username" placeholder="username" />
+    <button id="setName">Set Name</button>
+  </div>
+  <ul id="msgs"></ul>
 
-        <!-- Screen 2: Chat -->
-        <div id="chat-screen" class="screen">
-            <header class="chat-header">
-                <h2 class="header-title">Public Chat Room</h2>
-            </header>
-            <div class="messages-container" id="messages-container"></div>
-            <p id="typing-indicator"></p>
-            <div class="chat-input-area">
-                <form id="message-form">
-                    <input type="file" id="image-input" accept="image/*" style="display: none;">
-                    <button type="button" class="icon-button" id="attach-button" title="Send Image">
-                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
-                    </button>
-                    <input id="message-input" placeholder="Type a message..." autocomplete="off">
-                    <button type="submit" class="icon-button" id="send-button" title="Send">
-                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+  <form id="post">
+    <input id="text" placeholder="message" required />
+    <button type="submit">Send</button>
+  </form>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const RENDER_URL = 'https://my-cool-chat-app.onrender.com'; // IMPORTANT: Replace with your Render URL
+  <script>
+    const list = document.getElementById('msgs');
+    const usernameInput = document.getElementById('username');
+    const setNameBtn = document.getElementById('setName');
 
-            const screens = {
-                login: document.getElementById('login-screen'),
-                chat: document.getElementById('chat-screen')
-            };
-            const loginForm = document.getElementById('login-form');
-            const usernameInput = document.getElementById('username-input');
-            const loginError = document.getElementById('login-error');
-            const messageForm = document.getElementById('message-form');
-            const messageInput = document.getElementById('message-input');
-            const messagesContainer = document.getElementById('messages-container');
-            const attachButton = document.getElementById('attach-button');
-            const imageInput = document.getElementById('image-input');
-            const typingIndicator = document.getElementById('typing-indicator');
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(protocol + '://' + location.host);
 
-            let currentUser = null;
-            let ws;
-            let typingTimeout;
+    function render(messages) {
+      list.innerHTML = (messages || []).map(m =>
+        `<li><small>${new Date(m.timestamp || m.createdAt || '').toLocaleTimeString()}</small> <strong>${escapeHtml(m.username || 'anon')}</strong>: ${escapeHtml(m.content || m.text || '')}</li>`
+      ).join('');
+    }
 
-            // --- Core Functions ---
-            const switchScreen = (screenName) => {
-                Object.values(screens).forEach(s => s.classList.remove('active'));
-                screens[screenName].classList.add('active');
-            };
+    socket.addEventListener('open', () => {
+      console.log('ws open');
+      // request immediate full list
+      socket.send(JSON.stringify({ type: 'messages_fetch' }));
+    });
 
-            const scrollToBottom = () => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            };
+    socket.addEventListener('message', (ev) => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch { return; }
+      if (data.type === 'messages_update') {
+        render(data.messages);
+      } else if (data.type === 'new_message') {
+        // fallback: request full list (server sends full list regularly anyway)
+        socket.send(JSON.stringify({ type: 'messages_fetch' }));
+      }
+    });
 
-            // --- Message Display ---
-            const createMessageElement = (msg) => {
-                const group = document.createElement('div');
-                group.className = 'message-group ' + (msg.username === currentUser ? 'sent' : 'received');
+    setNameBtn.addEventListener('click', () => {
+      const name = usernameInput.value.trim();
+      if (!name) return;
+      socket.send(JSON.stringify({ type: 'register', username: name }));
+    });
 
-                if (msg.username !== currentUser) {
-                    const author = document.createElement('div');
-                    author.className = 'author';
-                    author.textContent = msg.username;
-                    group.appendChild(author);
-                }
+    document.getElementById('post').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = document.getElementById('text').value;
+      if (!text) return;
+      socket.send(JSON.stringify({ type: 'text_message', content: text }));
+      document.getElementById('text').value = '';
+    });
 
-                const bubble = document.createElement('div');
-                bubble.className = 'message-bubble';
-
-                if (msg.type === 'text') {
-                    bubble.textContent = msg.content;
-                } else if (msg.type === 'image') {
-                    const img = document.createElement('img');
-                    img.src = `${RENDER_URL}${msg.content}`;
-                    bubble.appendChild(img);
-                }
-                
-                group.appendChild(bubble);
-                return group;
-            };
-
-            const displayMessage = (msg) => {
-                const el = createMessageElement(msg);
-                messagesContainer.appendChild(el);
-                scrollToBottom();
-            };
-
-            // --- WebSocket Logic ---
-            const connectWebSocket = () => {
-                const wsUrl = RENDER_URL.replace(/^http/, 'ws');
-                ws = new WebSocket(wsUrl);
-
-                ws.onopen = () => {
-                    console.log('Connected to WebSocket server.');
-                    ws.send(JSON.stringify({ type: 'register', username: currentUser }));
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    console.log('Received:', data);
-
-                    switch (data.type) {
-                        case 'new_message':
-                            displayMessage(data);
-                            break;
-                        case 'user_typing':
-                            if (data.username !== currentUser) {
-                                typingIndicator.textContent = `${data.username} is typing...`;
-                            }
-                            break;
-                        case 'user_stop_typing':
-                             if (typingIndicator.textContent.includes(data.username)) {
-                                typingIndicator.textContent = '';
-                            }
-                            break;
-                    }
-                };
-
-                ws.onclose = () => {
-                    console.log('Disconnected. Trying to reconnect...');
-                    setTimeout(connectWebSocket, 3000);
-                };
-                ws.onerror = (err) => {
-                    console.error('WebSocket Error:', err);
-                    ws.close();
-                };
-            };
-
-            // --- Event Listeners ---
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const username = usernameInput.value.trim();
-                try {
-                    const res = await fetch(`${RENDER_URL}/register`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username })
-                    });
-                    if (res.ok) {
-                        currentUser = username;
-                        switchScreen('chat');
-                        const history = await fetch(`${RENDER_URL}/messages`).then(r => r.json());
-                        messagesContainer.innerHTML = '';
-                        history.forEach(displayMessage);
-                        connectWebSocket();
-                    } else {
-                        const { message } = await res.json();
-                        loginError.textContent = message;
-                    }
-                } catch (err) {
-                    loginError.textContent = 'Could not connect to server.';
-                }
-            });
-
-            messageForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const text = messageInput.value.trim();
-                if (text) {
-                    ws.send(JSON.stringify({ type: 'text_message', content: text }));
-                    messageInput.value = '';
-                }
-            });
-            
-            messageInput.addEventListener('input', () => {
-                clearTimeout(typingTimeout);
-                ws.send(JSON.stringify({ type: 'typing_start' }));
-                typingTimeout = setTimeout(() => {
-                    ws.send(JSON.stringify({ type: 'typing_stop' }));
-                }, 1500);
-            });
-            
-            attachButton.addEventListener('click', () => imageInput.click());
-            imageInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const formData = new FormData();
-                formData.append('media', file);
-
-                try {
-                    const res = await fetch(`${RENDER_URL}/upload`, { method: 'POST', body: formData });
-                    const { filePath } = await res.json();
-                    ws.send(JSON.stringify({ type: 'image_message', content: filePath }));
-                } catch (err) {
-                    console.error('Upload failed:', err);
-                }
-                imageInput.value = '';
-            });
-        });
-    </script>
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+  </script>
 </body>
 </html>
-
